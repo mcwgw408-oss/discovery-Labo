@@ -84,6 +84,12 @@ h3 {
   color: #6d7868;
 }
 
+.status-stat-all {
+  grid-column: 1 / -1;
+  background: #f8f3df;
+  border-color: #d9c98d;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(300px, 410px) minmax(0, 1fr);

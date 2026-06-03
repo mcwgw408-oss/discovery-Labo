@@ -220,6 +220,15 @@ function App() {
           </p>
         </div>
         <div className="status-garden" aria-label="状態別の件数">
+          <button
+            className="status-stat status-stat-all"
+            onClick={() => setStatusFilter('すべて')}
+            type="button"
+          >
+            <span>🌼</span>
+            <strong>{discoveries.length}</strong>
+            <small>すべて</small>
+          </button>
           {statuses.map((status) => (
             <button
               className="status-stat"
