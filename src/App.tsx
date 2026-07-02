@@ -571,7 +571,7 @@ function App() {
 
                 return (
                   <article className="discovery-card" key={discovery.id}>
-                    {isEditingCard && (
+                    {isEditingCard ? (
                       <div className="card-edit-form">
                         <label>
                           <span>タイトル</span>
@@ -651,7 +651,8 @@ function App() {
                           </button>
                         </div>
                       </div>
-                    )}
+                    ) : (
+                      <>
                     <div className="card-main">
                       <div className="card-topline">
                         <span className="status-pill">
@@ -702,6 +703,8 @@ function App() {
                         削除
                       </button>
                     </div>
+                      </>
+                    )}
                   </article>
                 )
               })
