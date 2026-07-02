@@ -18,7 +18,7 @@ type Discovery = {
 type DiscoveryForm = Omit<Discovery, 'id' | 'tags' | 'createdAt'>
 
 const storageKey = 'discovery-labo-discoveries'
-const sourcesStorageKey = 'discovery-labo-sources-v1'
+const entrySourcesStorageKey = 'discovery-labo-entry-sources-v1'
 
 const defaultSources = [
   '日常',
@@ -99,7 +99,7 @@ function GlobalNav() {
 }
 
 function loadSources(): string[] {
-  const saved = localStorage.getItem(sourcesStorageKey)
+  const saved = localStorage.getItem(entrySourcesStorageKey)
 
   if (!saved) {
     return defaultSources
@@ -143,11 +143,11 @@ function App() {
   }, [discoveries])
 
   useEffect(() => {
-    localStorage.setItem(sourcesStorageKey, JSON.stringify(sources))
+    localStorage.setItem(entrySourcesStorageKey, JSON.stringify(sources))
   }, [sources])
 
-  const allSources = useMemo(() => {
-    const collected = new Set(sources)
+  const listSources = useMemo(() => {
+    const collected = new Set<string>()
 
     discoveries.forEach((discovery) => {
       if (discovery.source) {
@@ -156,7 +156,7 @@ function App() {
     })
 
     return Array.from(collected)
-  }, [sources, discoveries])
+  }, [discoveries])
 
   const formSources = useMemo(() => {
     if (form.source && !sources.includes(form.source)) {
@@ -166,11 +166,11 @@ function App() {
   }, [sources, form.source])
 
   const cardEditSources = useMemo(() => {
-    if (cardEditForm?.source && !sources.includes(cardEditForm.source)) {
-      return [cardEditForm.source, ...sources]
+    if (cardEditForm?.source && !listSources.includes(cardEditForm.source)) {
+      return [cardEditForm.source, ...listSources]
     }
-    return sources
-  }, [sources, cardEditForm?.source])
+    return listSources
+  }, [listSources, cardEditForm?.source])
 
   const filteredDiscoveries = discoveries.filter((discovery) => {
     const matchesStatus =
@@ -314,22 +314,8 @@ function App() {
       return
     }
 
-    setDiscoveries((current) =>
-      current.map((item) =>
-        item.source === before ? { ...item, source: trimmed } : item,
-      ),
-    )
-
     if (form.source === before) {
       setForm((current) => ({ ...current, source: trimmed }))
-    }
-
-    if (cardEditForm?.source === before) {
-      setCardEditForm((current) => (current ? { ...current, source: trimmed } : current))
-    }
-
-    if (sourceFilter === before) {
-      setSourceFilter(trimmed)
     }
   }
 
@@ -447,7 +433,7 @@ function App() {
             {isEditingSources && (
               <div className="source-editor">
                 <p className="source-note">
-                  名前を書き換えると、過去の記録の発生源も一緒に変わります。
+                  ここで変わるのは左の新規登録フォームの選択肢だけです。右の記録は変わりません。
                 </p>
                 <ul className="source-list">
                   {sources.map((source, index) => (
@@ -549,7 +535,7 @@ function App() {
                 onChange={(event) => setSourceFilter(event.target.value)}
               >
                 <option>すべて</option>
-                {allSources.map((source) => (
+                {listSources.map((source) => (
                   <option key={source}>{source}</option>
                 ))}
               </select>
