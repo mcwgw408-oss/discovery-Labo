@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
+import { backupFilename, createBackup, downloadJson, validateBackup } from './backup'
 
 type DiscoveryStatus = '発芽' | '育成中' | '発酵中' | '収穫済み'
 
@@ -13,9 +14,11 @@ type Discovery = {
   status: DiscoveryStatus
   date: string
   createdAt: string
+  updatedAt?: string
+  statusChangedAt?: string
 }
 
-type DiscoveryForm = Omit<Discovery, 'id' | 'tags' | 'createdAt'>
+type DiscoveryForm = Omit<Discovery, 'id' | 'tags' | 'createdAt' | 'updatedAt' | 'statusChangedAt'>
 
 const storageKey = 'discovery-labo-discoveries'
 const entrySourcesStorageKey = 'discovery-labo-entry-sources-v1'
@@ -170,7 +173,7 @@ function App() {
       return [cardEditForm.source, ...listSources]
     }
     return listSources
-  }, [listSources, cardEditForm?.source])
+  }, [listSources, cardEditForm])
 
   const filteredDiscoveries = discoveries.filter((discovery) => {
     const matchesStatus =
@@ -224,6 +227,8 @@ function App() {
       status: form.status,
       date: form.date,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      statusChangedAt: new Date().toISOString(),
     }
 
     setDiscoveries((current) => [discovery, ...current])
@@ -268,6 +273,10 @@ function App() {
               source: cardEditForm.source,
               status: cardEditForm.status,
               date: cardEditForm.date,
+              updatedAt: new Date().toISOString(),
+              ...(cardEditForm.status !== item.status
+                ? { statusChangedAt: new Date().toISOString() }
+                : {}),
             }
           : item,
       ),
@@ -285,7 +294,16 @@ function App() {
 
   function changeStatus(id: string, status: DiscoveryStatus) {
     setDiscoveries((current) =>
-      current.map((item) => (item.id === id ? { ...item, status } : item)),
+      current.map((item) =>
+        item.id === id && item.status !== status
+          ? {
+              ...item,
+              status,
+              updatedAt: new Date().toISOString(),
+              statusChangedAt: new Date().toISOString(),
+            }
+          : item,
+      ),
     )
   }
 
@@ -333,9 +351,91 @@ function App() {
     }
   }
 
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  function handleExport() {
+    downloadJson(createBackup({ discoveries, sources }), backupFilename())
+  }
+
+  async function handleImportFile(file: File) {
+    let parsed: unknown
+
+    try {
+      parsed = JSON.parse(await file.text())
+    } catch {
+      alert('JSONファイルとして読み取れませんでした。')
+      return
+    }
+
+    const result = validateBackup(parsed)
+
+    if (!result.ok) {
+      alert(result.error)
+      return
+    }
+
+    const incoming = result.backup.data.discoveries
+
+    if (!Array.isArray(incoming)) {
+      alert('ファイルにデータが入っていません。')
+      return
+    }
+
+    // 取り込み前に、今のデータを自動でバックアップ
+    downloadJson(createBackup({ discoveries, sources }), backupFilename(true))
+
+    const nextDiscoveries = incoming.map((item) => {
+      const candidate = (typeof item === 'object' && item !== null ? item : {}) as Partial<Discovery>
+      return {
+        ...candidate,
+        id: candidate.id || crypto.randomUUID(),
+        tags: Array.isArray(candidate.tags) ? candidate.tags : [],
+      } as Discovery
+    })
+
+    const incomingSources = result.backup.data.sources
+    const nextSources =
+      Array.isArray(incomingSources) && incomingSources.length > 0
+        ? incomingSources.filter((source): source is string => typeof source === 'string')
+        : sources
+
+    const accepted = confirm(
+      `今のデータ（種${discoveries.length}件・発生源${sources.length}個）を、` +
+        `ファイルの内容（種${nextDiscoveries.length}件・発生源${nextSources.length}個）で置き換えます。\n` +
+        '直前のデータは自動バックアップとしてダウンロードされています。\nよろしいですか？',
+    )
+
+    if (!accepted) return
+
+    setDiscoveries(nextDiscoveries)
+    setSources(nextSources)
+    cancelCardEdit()
+    resetForm()
+    alert(`取り込みが完了しました（種${nextDiscoveries.length}件）。`)
+  }
+
   return (
     <main className="app-shell">
       <GlobalNav />
+      <div className="backup-actions" aria-label="バックアップ">
+        <button className="backup-button" type="button" onClick={handleExport}>
+          書き出し
+        </button>
+        <button className="backup-button" type="button" onClick={() => importInputRef.current?.click()}>
+          取り込み
+        </button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (file) void handleImportFile(file)
+          }}
+        />
+      </div>
       <header className="app-header">
         <div>
           <p className="eyebrow">Discovery Labo</p>

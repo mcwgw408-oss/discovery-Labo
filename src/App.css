@@ -509,3 +509,29 @@ time {
   padding: 6px 12px;
   font-size: 0.82rem;
 }
+
+/* ===== バックアップ（書き出し・取り込み） ===== */
+.backup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: -2px 0 10px;
+}
+
+.backup-button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #dfe6d5;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #74806d;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.backup-button:hover {
+  border-color: #7f9c5e;
+  color: #425638;
+}
