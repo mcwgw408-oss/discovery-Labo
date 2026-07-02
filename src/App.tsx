@@ -15,32 +15,28 @@ type Discovery = {
   createdAt: string
 }
 
-type DiscoveryForm = Omit<Discovery, 'id' | 'tags' | 'createdAt'> & {
-  tags: string
-}
+type DiscoveryForm = Omit<Discovery, 'id' | 'tags' | 'createdAt'>
 
 const storageKey = 'discovery-labo-discoveries'
+const sourcesStorageKey = 'discovery-labo-sources-v1'
 
-const sources = [
+const defaultSources = [
   '日常',
-  'Threads',
+  'Substack',
   'note',
+  'X',
+  'Threads',
+  'YouTube',
+  'Voicy',
+  'Podcast',
+  'セミナー',
+  '書籍',
   'ドラマ',
   '映画',
-  '本',
   'ゲーム',
   '訪看',
   'AI',
   'その他',
-]
-
-const tagSeeds = [
-  '回復期',
-  'AI',
-  'Threads向き',
-  'note向き',
-  '日常',
-  '未分類',
 ]
 
 const statuses: Array<{
@@ -58,7 +54,6 @@ const emptyForm: DiscoveryForm = {
   title: '',
   memo: '',
   source: '日常',
-  tags: '未分類',
   status: '発芽',
   date: new Date().toISOString().slice(0, 10),
 }
@@ -76,13 +71,46 @@ const sampleDiscoveries: Discovery[] = [
   },
 ]
 
-function parseTags(value: string) {
-  const tags = value
-    .split(/[,\s、]+/)
-    .map((tag) => tag.trim())
-    .filter(Boolean)
+const globalNavLinks = [
+  { label: '🏠 ダッシュボード', href: 'https://mcwgw408-oss.github.io/operation-dashboard/' },
+  { label: 'Substack-Labo', href: 'https://mcwgw408-oss.github.io/substack-labo/' },
+  { label: 'Discovery-Labo', href: 'https://mcwgw408-oss.github.io/discovery-Labo/', current: true },
+  { label: '交流ログ', href: 'https://mcwgw408-oss.github.io/action-Labo/' },
+  { label: '発信観察', href: 'https://mcwgw408-oss.github.io/observation-Labo/' },
+  { label: 'ストック管理', href: 'https://mcwgw408-oss.github.io/Stock-Labo/' },
+]
 
-  return Array.from(new Set(tags.length > 0 ? tags : ['未分類']))
+function GlobalNav() {
+  return (
+    <nav className="global-nav" aria-label="アプリ切り替え">
+      {globalNavLinks.map((link) =>
+        link.current ? (
+          <span className="global-nav-link current" aria-current="page" key={link.label}>
+            {link.label}
+          </span>
+        ) : (
+          <a className="global-nav-link" href={link.href} key={link.label}>
+            {link.label}
+          </a>
+        ),
+      )}
+    </nav>
+  )
+}
+
+function loadSources(): string[] {
+  const saved = localStorage.getItem(sourcesStorageKey)
+
+  if (!saved) {
+    return defaultSources
+  }
+
+  try {
+    const parsed = JSON.parse(saved) as string[]
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSources
+  } catch {
+    return defaultSources
+  }
 }
 
 function App() {
@@ -99,33 +127,50 @@ function App() {
       return sampleDiscoveries
     }
   })
+  const [sources, setSources] = useState<string[]>(loadSources)
   const [form, setForm] = useState<DiscoveryForm>(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'すべて' | DiscoveryStatus>(
     'すべて',
   )
-  const [tagFilter, setTagFilter] = useState('すべて')
+  const [sourceFilter, setSourceFilter] = useState('すべて')
+  const [isEditingSources, setIsEditingSources] = useState(false)
+  const [newSource, setNewSource] = useState('')
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(discoveries))
   }, [discoveries])
 
-  const allTags = useMemo(() => {
-    const collected = new Set(tagSeeds)
+  useEffect(() => {
+    localStorage.setItem(sourcesStorageKey, JSON.stringify(sources))
+  }, [sources])
+
+  const allSources = useMemo(() => {
+    const collected = new Set(sources)
 
     discoveries.forEach((discovery) => {
-      discovery.tags.forEach((tag) => collected.add(tag))
+      if (discovery.source) {
+        collected.add(discovery.source)
+      }
     })
 
-    return ['すべて', ...Array.from(collected)]
-  }, [discoveries])
+    return Array.from(collected)
+  }, [sources, discoveries])
+
+  const formSources = useMemo(() => {
+    if (form.source && !sources.includes(form.source)) {
+      return [form.source, ...sources]
+    }
+    return sources
+  }, [sources, form.source])
 
   const filteredDiscoveries = discoveries.filter((discovery) => {
     const matchesStatus =
       statusFilter === 'すべて' || discovery.status === statusFilter
-    const matchesTag = tagFilter === 'すべて' || discovery.tags.includes(tagFilter)
+    const matchesSource =
+      sourceFilter === 'すべて' || discovery.source === sourceFilter
 
-    return matchesStatus && matchesTag
+    return matchesStatus && matchesSource
   })
 
   const statusCounts = useMemo(() => {
@@ -159,17 +204,17 @@ function App() {
       return
     }
 
+    const existing = discoveries.find((item) => item.id === editingId)
+
     const discovery: Discovery = {
       id: editingId ?? crypto.randomUUID(),
       title: trimmedTitle,
       memo: trimmedMemo,
       source: form.source,
-      tags: parseTags(form.tags),
+      tags: existing?.tags ?? [],
       status: form.status,
       date: form.date,
-      createdAt:
-        discoveries.find((item) => item.id === editingId)?.createdAt ??
-        new Date().toISOString(),
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
     }
 
     setDiscoveries((current) => {
@@ -188,7 +233,6 @@ function App() {
       title: discovery.title,
       memo: discovery.memo,
       source: discovery.source,
-      tags: discovery.tags.join('、'),
       status: discovery.status,
       date: discovery.date,
     })
@@ -209,8 +253,63 @@ function App() {
     )
   }
 
+  function addSource() {
+    const trimmed = newSource.trim()
+
+    if (!trimmed || sources.includes(trimmed)) {
+      setNewSource('')
+      return
+    }
+
+    setSources((current) => [...current, trimmed])
+    setNewSource('')
+  }
+
+  function renameSource(index: number, value: string) {
+    const before = sources[index]
+
+    setSources((current) =>
+      current.map((source, i) => (i === index ? value : source)),
+    )
+
+    const trimmed = value.trim()
+
+    if (!trimmed || trimmed === before) {
+      return
+    }
+
+    setDiscoveries((current) =>
+      current.map((item) =>
+        item.source === before ? { ...item, source: trimmed } : item,
+      ),
+    )
+
+    if (form.source === before) {
+      setForm((current) => ({ ...current, source: trimmed }))
+    }
+
+    if (sourceFilter === before) {
+      setSourceFilter(trimmed)
+    }
+  }
+
+  function deleteSource(index: number) {
+    const target = sources[index]
+
+    if (!confirm(`発生源「${target}」を選択肢から削除しますか？\n（過去の記録はそのまま残ります）`)) {
+      return
+    }
+
+    setSources((current) => current.filter((_, i) => i !== index))
+
+    if (form.source === target) {
+      setForm((current) => ({ ...current, source: sources.find((_, i) => i !== index) ?? '' }))
+    }
+  }
+
   return (
     <main className="app-shell">
+      <GlobalNav />
       <header className="app-header">
         <div>
           <p className="eyebrow">Discovery Labo</p>
@@ -285,7 +384,7 @@ function App() {
                 value={form.source}
                 onChange={(event) => updateForm('source', event.target.value)}
               >
-                {sources.map((source) => (
+                {formSources.map((source) => (
                   <option key={source}>{source}</option>
                 ))}
               </select>
@@ -299,6 +398,59 @@ function App() {
                 onChange={(event) => updateForm('date', event.target.value)}
               />
             </label>
+          </div>
+
+          <div className="source-manager">
+            <button
+              className="ghost-button source-toggle"
+              type="button"
+              onClick={() => setIsEditingSources((current) => !current)}
+            >
+              {isEditingSources ? '発生源の編集を閉じる' : '発生源を追加・編集する'}
+            </button>
+
+            {isEditingSources && (
+              <div className="source-editor">
+                <p className="source-note">
+                  名前を書き換えると、過去の記録の発生源も一緒に変わります。
+                </p>
+                <ul className="source-list">
+                  {sources.map((source, index) => (
+                    <li key={index}>
+                      <input
+                        value={source}
+                        onChange={(event) => renameSource(index, event.target.value)}
+                        aria-label={`発生源${index + 1}`}
+                      />
+                      <button
+                        className="danger-button"
+                        type="button"
+                        onClick={() => deleteSource(index)}
+                      >
+                        削除
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="source-add-row">
+                  <input
+                    value={newSource}
+                    onChange={(event) => setNewSource(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addSource()
+                      }
+                    }}
+                    placeholder="新しい発生源（例：ラジオ）"
+                    aria-label="新しい発生源"
+                  />
+                  <button className="ghost-button" type="button" onClick={addSource}>
+                    追加
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <fieldset>
@@ -322,21 +474,6 @@ function App() {
               ))}
             </div>
           </fieldset>
-
-          <label>
-            <span>タグ</span>
-            <input
-              value={form.tags}
-              onChange={(event) => updateForm('tags', event.target.value)}
-              placeholder="回復期、AI、Threads向き"
-              list="tag-seeds"
-            />
-            <datalist id="tag-seeds">
-              {tagSeeds.map((tag) => (
-                <option key={tag} value={tag} />
-              ))}
-            </datalist>
-          </label>
 
           <button className="primary-button" type="submit">
             {editingId ? '更新する' : '登録する'}
@@ -371,13 +508,14 @@ function App() {
             </label>
 
             <label>
-              <span>タグ別フィルター</span>
+              <span>発生源フィルター</span>
               <select
-                value={tagFilter}
-                onChange={(event) => setTagFilter(event.target.value)}
+                value={sourceFilter}
+                onChange={(event) => setSourceFilter(event.target.value)}
               >
-                {allTags.map((tag) => (
-                  <option key={tag}>{tag}</option>
+                <option>すべて</option>
+                {allSources.map((source) => (
+                  <option key={source}>{source}</option>
                 ))}
               </select>
             </label>
@@ -407,17 +545,13 @@ function App() {
                       <h3>{discovery.title}</h3>
                       {discovery.memo && <p>{discovery.memo}</p>}
                       <div className="meta-row">
-                        <span>{discovery.source}</span>
-                        {discovery.tags.map((tag) => (
-                          <button
-                            className="tag-chip"
-                            key={tag}
-                            type="button"
-                            onClick={() => setTagFilter(tag)}
-                          >
-                            #{tag}
-                          </button>
-                        ))}
+                        <button
+                          className="source-chip"
+                          type="button"
+                          onClick={() => setSourceFilter(discovery.source)}
+                        >
+                          📍 {discovery.source}
+                        </button>
                       </div>
                     </div>
 

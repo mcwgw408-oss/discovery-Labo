@@ -58,7 +58,7 @@ h3 {
 .status-stat {
   min-height: 88px;
   border: 1px solid #dfe6d5;
-  border-radius: 8px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.74);
   color: #394633;
   cursor: pointer;
@@ -68,7 +68,7 @@ h3 {
   align-items: center;
   padding: 14px;
   text-align: left;
-  box-shadow: 0 12px 26px rgba(99, 123, 80, 0.1);
+  box-shadow: 0 8px 20px rgba(99, 123, 80, 0.08);
 }
 
 .status-stat span {
@@ -100,9 +100,9 @@ h3 {
 .entry-panel,
 .list-panel {
   border: 1px solid #dfe6d5;
-  border-radius: 8px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 18px 46px rgba(76, 92, 62, 0.13);
+  box-shadow: 0 14px 34px rgba(76, 92, 62, 0.1);
 }
 
 .entry-panel {
@@ -149,7 +149,7 @@ textarea,
 select {
   width: 100%;
   border: 1px solid #cedbc4;
-  border-radius: 8px;
+  border-radius: 14px;
   background: #fffef9;
   box-sizing: border-box;
   color: #2d352a;
@@ -186,7 +186,7 @@ select:focus {
 .status-option {
   min-height: 82px;
   border: 1px solid #dbe4d0;
-  border-radius: 8px;
+  border-radius: 14px;
   background: #fbfaf0;
   cursor: pointer;
   gap: 3px;
@@ -215,10 +215,9 @@ select:focus {
 
 .primary-button,
 .ghost-button,
-.danger-button,
-.tag-chip {
+.danger-button {
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
   font: inherit;
   font-weight: 800;
@@ -271,9 +270,15 @@ select:focus {
   grid-template-columns: minmax(0, 1fr) 148px;
   gap: 16px;
   border: 1px solid #e2e8d8;
-  border-radius: 8px;
+  border-radius: 16px;
   background: #fffef9;
-  padding: 16px;
+  padding: 18px;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.discovery-card:hover {
+  box-shadow: 0 10px 24px rgba(99, 123, 80, 0.12);
+  transform: translateY(-2px);
 }
 
 .card-main {
@@ -319,10 +324,20 @@ time {
   font-size: 0.9rem;
 }
 
-.tag-chip {
-  background: #f4ead9;
-  color: #6d5636;
-  padding: 5px 9px;
+.source-chip {
+  border: 0;
+  border-radius: 999px;
+  background: #fdeee7;
+  color: #96604a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  padding: 6px 12px;
+}
+
+.source-chip:hover {
+  background: #fbe2d6;
 }
 
 .card-actions {
@@ -332,7 +347,7 @@ time {
 
 .empty-state {
   border: 1px dashed #cbd8bf;
-  border-radius: 8px;
+  border-radius: 14px;
   background: #fbfaf0;
   padding: 26px;
   text-align: center;
@@ -385,4 +400,95 @@ time {
   .list-panel {
     padding: 16px;
   }
+}
+
+/* ===== 共通ナビゲーション ===== */
+.global-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid #dfe6d5;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.global-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #dfe6d5;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #394633;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.global-nav-link:hover {
+  border-color: #7f9c5e;
+}
+
+.global-nav-link.current {
+  border-color: #7f9c5e;
+  background: #eef5e5;
+  color: #425638;
+}
+
+/* ===== 発生源の追加・編集 ===== */
+.source-manager {
+  display: grid;
+  gap: 10px;
+}
+
+.source-toggle {
+  justify-self: start;
+}
+
+.source-editor {
+  display: grid;
+  gap: 10px;
+  border: 1px dashed #cbd8bf;
+  border-radius: 14px;
+  background: #fbfaf0;
+  padding: 14px;
+}
+
+.source-note {
+  margin: 0;
+  color: #74806d;
+  font-size: 0.82rem;
+}
+
+.source-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.source-list li,
+.source-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.source-list input,
+.source-add-row input {
+  padding: 8px 12px;
+}
+
+.source-list .danger-button {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
 }
