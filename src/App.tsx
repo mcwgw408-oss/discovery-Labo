@@ -129,7 +129,8 @@ function App() {
   })
   const [sources, setSources] = useState<string[]>(loadSources)
   const [form, setForm] = useState<DiscoveryForm>(emptyForm)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [activeCardEditId, setActiveCardEditId] = useState<string | null>(null)
+  const [cardEditForm, setCardEditForm] = useState<DiscoveryForm | null>(null)
   const [statusFilter, setStatusFilter] = useState<'すべて' | DiscoveryStatus>(
     'すべて',
   )
@@ -164,6 +165,13 @@ function App() {
     return sources
   }, [sources, form.source])
 
+  const cardEditSources = useMemo(() => {
+    if (cardEditForm?.source && !sources.includes(cardEditForm.source)) {
+      return [cardEditForm.source, ...sources]
+    }
+    return sources
+  }, [sources, cardEditForm?.source])
+
   const filteredDiscoveries = discoveries.filter((discovery) => {
     const matchesStatus =
       statusFilter === 'すべて' || discovery.status === statusFilter
@@ -190,8 +198,11 @@ function App() {
   }
 
   function resetForm() {
-    setEditingId(null)
     setForm({ ...emptyForm, date: new Date().toISOString().slice(0, 10) })
+  }
+
+  function updateCardEditForm(name: keyof DiscoveryForm, value: string) {
+    setCardEditForm((current) => (current ? { ...current, [name]: value } : current))
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -204,46 +215,71 @@ function App() {
       return
     }
 
-    const existing = discoveries.find((item) => item.id === editingId)
-
     const discovery: Discovery = {
-      id: editingId ?? crypto.randomUUID(),
+      id: crypto.randomUUID(),
       title: trimmedTitle,
       memo: trimmedMemo,
       source: form.source,
-      tags: existing?.tags ?? [],
+      tags: [],
       status: form.status,
       date: form.date,
-      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     }
 
-    setDiscoveries((current) => {
-      if (editingId) {
-        return current.map((item) => (item.id === editingId ? discovery : item))
-      }
-
-      return [discovery, ...current]
-    })
+    setDiscoveries((current) => [discovery, ...current])
     resetForm()
   }
 
-  function startEditing(discovery: Discovery) {
-    setEditingId(discovery.id)
-    setForm({
+  function startCardEdit(discovery: Discovery) {
+    setActiveCardEditId(discovery.id)
+    setCardEditForm({
       title: discovery.title,
       memo: discovery.memo,
       source: discovery.source,
       status: discovery.status,
       date: discovery.date,
     })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelCardEdit() {
+    setActiveCardEditId(null)
+    setCardEditForm(null)
+  }
+
+  function saveCardEdit(id: string) {
+    if (!cardEditForm) {
+      return
+    }
+
+    const trimmedTitle = cardEditForm.title.trim()
+    const trimmedMemo = cardEditForm.memo.trim()
+
+    if (!trimmedTitle) {
+      return
+    }
+
+    setDiscoveries((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              title: trimmedTitle,
+              memo: trimmedMemo,
+              source: cardEditForm.source,
+              status: cardEditForm.status,
+              date: cardEditForm.date,
+            }
+          : item,
+      ),
+    )
+    cancelCardEdit()
   }
 
   function deleteDiscovery(id: string) {
     setDiscoveries((current) => current.filter((item) => item.id !== id))
 
-    if (editingId === id) {
-      resetForm()
+    if (activeCardEditId === id) {
+      cancelCardEdit()
     }
   }
 
@@ -286,6 +322,10 @@ function App() {
 
     if (form.source === before) {
       setForm((current) => ({ ...current, source: trimmed }))
+    }
+
+    if (cardEditForm?.source === before) {
+      setCardEditForm((current) => (current ? { ...current, source: trimmed } : current))
     }
 
     if (sourceFilter === before) {
@@ -347,14 +387,9 @@ function App() {
         <form className="entry-panel" onSubmit={handleSubmit}>
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">{editingId ? '編集中' : '新規登録'}</p>
-              <h2>{editingId ? '種を少し整える' : '発見の種を置く'}</h2>
+              <p className="eyebrow">新規登録</p>
+              <h2>発見の種を置く</h2>
             </div>
-            {editingId && (
-              <button className="ghost-button" type="button" onClick={resetForm}>
-                解除
-              </button>
-            )}
           </div>
 
           <label>
@@ -476,7 +511,7 @@ function App() {
           </fieldset>
 
           <button className="primary-button" type="submit">
-            {editingId ? '更新する' : '登録する'}
+            登録する
           </button>
         </form>
 
@@ -532,9 +567,91 @@ function App() {
                 const status = statuses.find(
                   (item) => item.value === discovery.status,
                 )
+                const isEditingCard = activeCardEditId === discovery.id && cardEditForm
 
                 return (
                   <article className="discovery-card" key={discovery.id}>
+                    {isEditingCard && (
+                      <div className="card-edit-form">
+                        <label>
+                          <span>タイトル</span>
+                          <input
+                            value={cardEditForm.title}
+                            onChange={(event) =>
+                              updateCardEditForm('title', event.target.value)
+                            }
+                            required
+                          />
+                        </label>
+                        <label>
+                          <span>一言メモ</span>
+                          <textarea
+                            value={cardEditForm.memo}
+                            onChange={(event) =>
+                              updateCardEditForm('memo', event.target.value)
+                            }
+                            rows={3}
+                          />
+                        </label>
+                        <div className="form-grid">
+                          <label>
+                            <span>発生源</span>
+                            <select
+                              value={cardEditForm.source}
+                              onChange={(event) =>
+                                updateCardEditForm('source', event.target.value)
+                              }
+                            >
+                              {cardEditSources.map((source) => (
+                                <option key={source}>{source}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span>日付</span>
+                            <input
+                              type="date"
+                              value={cardEditForm.date}
+                              onChange={(event) =>
+                                updateCardEditForm('date', event.target.value)
+                              }
+                            />
+                          </label>
+                        </div>
+                        <label>
+                          <span>状態</span>
+                          <select
+                            value={cardEditForm.status}
+                            onChange={(event) =>
+                              updateCardEditForm(
+                                'status',
+                                event.target.value as DiscoveryStatus,
+                              )
+                            }
+                          >
+                            {statuses.map((item) => (
+                              <option key={item.value}>{item.value}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="card-edit-actions">
+                          <button
+                            className="primary-button"
+                            type="button"
+                            onClick={() => saveCardEdit(discovery.id)}
+                          >
+                            更新する
+                          </button>
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            onClick={cancelCardEdit}
+                          >
+                            解除
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="card-main">
                       <div className="card-topline">
                         <span className="status-pill">
@@ -573,7 +690,7 @@ function App() {
                       <button
                         className="ghost-button"
                         type="button"
-                        onClick={() => startEditing(discovery)}
+                        onClick={() => startCardEdit(discovery)}
                       >
                         編集
                       </button>

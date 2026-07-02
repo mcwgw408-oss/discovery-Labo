@@ -345,6 +345,23 @@ time {
   flex-direction: column;
 }
 
+.card-edit-form {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  border: 1px solid #dbe4d0;
+  border-radius: 14px;
+  background: #fbfaf0;
+  padding: 14px;
+}
+
+.card-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .empty-state {
   border: 1px dashed #cbd8bf;
   border-radius: 14px;
